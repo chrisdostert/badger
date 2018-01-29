@@ -204,13 +204,27 @@ func (s *levelsController) runWorker(lc *y.Closer) {
 
 // FIXME do we need a level closer here. Probably not
 func (s *levelsController) doCompactOffline() error {
-	for i := range s.levels {
-		_, err := s.doCompact(i)
-		if err != nil {
-			return err
+	for s.checkAllLevelsCompacted() {
+		for i := range s.levels {
+			_, err := s.doCompact(i)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+// Iterates through all levels and checks that all tables have been compacted
+func (s *levelsController) checkAllLevelsCompacted() bool {
+	// skip level 0 and the last level
+	// FIXME is this right, or does there need to be a special check for level 0?
+	for i := 1; i < len(s.levels)-1; i++ {
+		if s.levels[i].numTables() > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // Returns true if level zero may be compacted, without accounting for compactions that already
